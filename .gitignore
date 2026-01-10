@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# Virtual environments
+.env
+.venv/
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Migrations cache
+migrations/versions/__pycache__/
+
+# Coverage / testing
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Local configs
+.env.local
+.env.dev
+.env.prod

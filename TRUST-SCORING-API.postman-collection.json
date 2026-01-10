@@ -1,0 +1,124 @@
+{
+  "info": {
+    "name": "TrustCheck API",
+    "description": "Complete API collection for TrustCheck",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "person_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register Business",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"business_name\": \"Ace Rentals\",\n  \"business_type\": \"Landlord\",\n  \"business_email\": \"info@acerentals.ng\",\n  \"business_phone\": \"+2348012345678\",\n  \"business_address\": \"123 Main St, Lagos\",\n  \"user_full_name\": \"John Doe\",\n  \"user_email\": \"john@acerentals.ng\",\n  \"user_password\": \"SecurePass123!\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/auth/register"}
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@acerentals.ng\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/auth/login"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Persons",
+      "item": [
+        {
+          "name": "Add Person",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+2348098765432\",\n  \"full_name\": \"Amaka Okafor\",\n  \"occupation\": \"Food Vendor\",\n  \"employer\": \"Self-employed\",\n  \"relationship_type\": \"tenant\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/persons"}
+          }
+        },
+        {
+          "name": "List Persons",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{access_token}}"}],
+            "url": {"raw": "{{base_url}}/persons"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Record Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"person_id\": \"{{person_id}}\",\n  \"amount\": 150000,\n  \"currency\": \"NGN\",\n  \"description\": \"Monthly rent\",\n  \"due_date\": \"2026-02-01T00:00:00Z\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/payments"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Scoring",
+      "item": [
+        {
+          "name": "Compute Trust Score",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{access_token}}"}],
+            "url": {"raw": "{{base_url}}/scoring/{{person_id}}/compute"}
+          }
+        },
+        {
+          "name": "Get Trust Score",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{access_token}}"}],
+            "url": {"raw": "{{base_url}}/scoring/{{person_id}}"}
+          }
+        }
+      ]
+    }
+  ]
+}
