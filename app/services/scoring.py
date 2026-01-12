@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timezone
 from app.models.payment import PaymentRecord, PaymentStatus
-from app.models.relationship import Relationship
+from app.models.person import Relationship
 from app.models.reference import Reference
 from app.models.trust_score import TrustScore
 
