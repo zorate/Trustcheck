@@ -1,24 +1,36 @@
-from sqlalchemy import Column, String, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import relationship
-from app.models.base import Base
+from datetime import datetime, timezone
+from typing import Optional
+import uuid
 
-class Person(Base):
-    # Phone is stored hashed for privacy; raw phone never stored
-    phone_hash = Column(String(128), nullable=False)
-    first_name = Column(String(128), nullable=True)
-    last_name = Column(String(128), nullable=True)
-    notes = Column(String(1024), nullable=True)
+from beanie import Document, Indexed
+from pydantic import Field
 
-    # Person is global, but relationships are per business
-    __table_args__ = (
-        UniqueConstraint("phone_hash", name="uq_person_phone_hash"),
-    )
 
-class Relationship(Base):
-    business_id = Column(ForeignKey("business.id", ondelete="CASCADE"), nullable=False)
-    person_id = Column(ForeignKey("person.id", ondelete="CASCADE"), nullable=False)
-    started_on = Column(String(32), nullable=False)  # ISO date string for simplicity
-    status = Column(String(32), nullable=False, default="active")  # active, inactive
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
-    business = relationship("Business", lazy="joined")
-    person = relationship("Person", lazy="joined")
+def new_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+class Person(Document):
+    id: str = Field(default_factory=new_uuid)
+    business_id: Indexed(str)  # type: ignore[valid-type]
+    phone_hash: str
+    phone_display: str
+    full_name: str
+    capacity_level: str = "none"
+    notes: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+    deleted_at: Optional[datetime] = None
+
+    class Settings:
+        name = "persons"
+        indexes = [
+            "business_id",
+            "phone_hash",
+            "is_active",
+            [("business_id", 1), ("phone_hash", 1)],
+        ]

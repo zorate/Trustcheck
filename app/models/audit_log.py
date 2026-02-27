@@ -1,15 +1,37 @@
-from sqlalchemy import Column, String, ForeignKey, JSON
-from sqlalchemy.orm import relationship
-from app.models.base import Base
+from datetime import datetime, timezone
+from typing import Any, Optional
+import uuid
 
-class AuditLog(Base):
-    business_id = Column(ForeignKey("business.id", ondelete="CASCADE"), nullable=True)
-    user_id = Column(ForeignKey("businessuser.id", ondelete="SET NULL"), nullable=True)
-    action = Column(String(128), nullable=False)
-    path = Column(String(255), nullable=False)
-    method = Column(String(16), nullable=False)
-    ip = Column(String(64), nullable=True)
-    details = Column(JSON, nullable=True)
+from beanie import Document, Indexed
+from pydantic import Field
 
-    business = relationship("Business", lazy="joined")
-    user = relationship("BusinessUser", lazy="joined")
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+def new_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+class AuditLog(Document):
+    id: str = Field(default_factory=new_uuid)
+    business_id: Optional[Indexed(str)] = None  # type: ignore[valid-type]
+    actor_id: Optional[str] = None
+    action: Indexed(str)                         # type: ignore[valid-type]
+    resource_type: Optional[str] = None
+    resource_id: Optional[str] = None
+    detail: Optional[dict[str, Any]] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    created_at: datetime = Field(default_factory=utcnow)
+
+    class Settings:
+        name = "audit_logs"
+        indexes = [
+            "business_id",
+            "actor_id",
+            "action",
+            "resource_type",
+            "created_at",
+            [("business_id", 1), ("created_at", -1)],
+        ]

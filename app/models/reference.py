@@ -1,14 +1,35 @@
-from sqlalchemy import Column, String, ForeignKey, Integer
-from sqlalchemy.orm import relationship
-from app.models.base import Base
+from datetime import datetime, timezone
+from typing import Optional
+import uuid
 
-class Reference(Base):
-    business_id = Column(ForeignKey("business.id", ondelete="CASCADE"), nullable=False)
-    person_id = Column(ForeignKey("person.id", ondelete="CASCADE"), nullable=False)
+from beanie import Document, Indexed
+from pydantic import Field
 
-    level = Column(Integer, nullable=False)  # 0 none, 1 informal, 2 trusted/guarantor
-    source = Column(String(255), nullable=True)  # who endorsed
-    notes = Column(String(1024), nullable=True)
 
-    business = relationship("Business", lazy="joined")
-    person = relationship("Person", lazy="joined")
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+def new_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+class Reference(Document):
+    id: str = Field(default_factory=new_uuid)
+    business_id: Indexed(str)  # type: ignore[valid-type]
+    person_id: Indexed(str)    # type: ignore[valid-type]
+    reference_type: str
+    description: Optional[str] = None
+    given_by: str
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+    deleted_at: Optional[datetime] = None
+
+    class Settings:
+        name = "references"
+        indexes = [
+            "business_id",
+            "person_id",
+            [("business_id", 1), ("person_id", 1)],
+            "is_active",
+        ]

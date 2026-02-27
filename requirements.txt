@@ -1,13 +1,23 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.0
-SQLAlchemy==2.0.25
-asyncpg==0.29.0
-alembic==1.13.2
-pydantic==2.7.4
-pydantic-core==2.18.4
-passlib[bcrypt]==1.7.4
-python-jose==3.3.0
-bcrypt==4.1.2
-jwt==1.3.1
-email-validator==2.1.0.post1
-psycopg2-binary==2.9.7
+# TrustCheck — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12
+
+# ── MongoDB ───────────────────────────────────────────────────────────────────
+motor==3.6.0
+beanie==1.27.0
+
+# ── Auth & Security ───────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+bcrypt==4.2.0
+pydantic[email]==2.10.2
+pydantic-settings==2.6.1
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.3.4
+pytest-asyncio==0.24.0
+mongomock-motor==0.0.34
+httpx==0.28.0

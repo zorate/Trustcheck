@@ -1,12 +1,30 @@
-from sqlalchemy import Column, String, UniqueConstraint
-from app.models.base import Base
+from datetime import datetime, timezone
+from typing import Optional
+import uuid
 
-class Business(Base):
-    name = Column(String(255), nullable=False)
-    country = Column(String(64), nullable=False, default="Nigeria")
-    phone = Column(String(32), nullable=True)
-    email = Column(String(255), nullable=True)
+from beanie import Document, Indexed
+from pydantic import Field, EmailStr
 
-    __table_args__ = (
-        UniqueConstraint("name", "country", name="uq_business_name_country"),
-    )
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+def new_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+class Business(Document):
+    id: str = Field(default_factory=new_uuid)
+    name: str
+    email: Indexed(EmailStr, unique=True)  # type: ignore[valid-type]
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    business_type: str
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+    deleted_at: Optional[datetime] = None
+
+    class Settings:
+        name = "businesses"
+        indexes = ["email", "is_active", "created_at"]

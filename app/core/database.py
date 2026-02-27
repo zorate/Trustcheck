@@ -1,24 +1,70 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+import logging
+from motor.motor_asyncio import AsyncIOMotorClient
+from beanie import init_beanie
+
 from app.core.config import get_settings
 
-settings = get_settings()
+logger = logging.getLogger(__name__)
 
-engine = create_async_engine(
-    settings.database_url,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    echo=settings.debug,
-)
-
-AsyncSessionLocal = sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+# Module-level client — created once on startup
+_client: AsyncIOMotorClient | None = None
 
 
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
+async def connect_db() -> None:
+    """Initialize MongoDB connection and Beanie ODM."""
+    global _client
+
+    settings = get_settings()
+
+    # Import all document models here to register them with Beanie
+    from app.models.business import Business
+    from app.models.business_user import BusinessUser
+    from app.models.person import Person
+    from app.models.relationship import Relationship
+    from app.models.payment_record import PaymentRecord
+    from app.models.trust_score import TrustScore
+    from app.models.reference import Reference
+    from app.models.audit_log import AuditLog
+
+    _client = AsyncIOMotorClient(
+        settings.MONGODB_URL,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=10000,
+        socketTimeoutMS=30000,
+    )
+
+    await init_beanie(
+        database=_client[settings.MONGODB_DB_NAME],
+        document_models=[
+            Business,
+            BusinessUser,
+            Person,
+            Relationship,
+            PaymentRecord,
+            TrustScore,
+            Reference,
+            AuditLog,
+        ],
+    )
+
+    logger.info("MongoDB connected — database: %s", settings.MONGODB_DB_NAME)
+
+
+async def close_db() -> None:
+    """Close MongoDB connection on shutdown."""
+    global _client
+    if _client:
+        _client.close()
+        logger.info("MongoDB connection closed")
+
+
+async def ping_db() -> bool:
+    """Health check — returns True if MongoDB is reachable."""
+    global _client
+    if not _client:
+        return False
+    try:
+        await _client.admin.command("ping")
+        return True
+    except Exception:
+        return False

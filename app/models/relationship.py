@@ -1,12 +1,36 @@
-from sqlalchemy import Column, String, ForeignKey
-from sqlalchemy.orm import relationship
-from app.models.base import Base
+from datetime import datetime, timezone
+from typing import Optional
+import uuid
 
-'''class Relationship(Base):
-    business_id = Column(ForeignKey("business.id", ondelete="CASCADE"), nullable=False)
-    person_id = Column(ForeignKey("person.id", ondelete="CASCADE"), nullable=False)
-    started_on = Column(String(32), nullable=False)  # ISO date string
-    status = Column(String(32), nullable=False, default="active")  # active, inactive
+from beanie import Document, Indexed
+from pydantic import Field
 
-    business = relationship("Business", lazy="joined")
-    person = relationship("Person", lazy="joined")'''
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+def new_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+class Relationship(Document):
+    id: str = Field(default_factory=new_uuid)
+    business_id: Indexed(str)  # type: ignore[valid-type]
+    person_id: Indexed(str)    # type: ignore[valid-type]
+    relationship_type: str
+    relationship_start: datetime
+    relationship_end: Optional[datetime] = None
+    status: str = "active"
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+    deleted_at: Optional[datetime] = None
+
+    class Settings:
+        name = "relationships"
+        indexes = [
+            "business_id",
+            "person_id",
+            [("business_id", 1), ("person_id", 1)],
+            "status",
+        ]

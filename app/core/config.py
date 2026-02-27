@@ -1,49 +1,60 @@
-import os
-from pydantic import BaseModel, Field, ValidationError
-from typing import Optional
+from functools import lru_cache
+from typing import List
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseModel):
-    app_name: str = "TrustCheck"
-    environment: str = Field(default="production", pattern="^(development|staging|production)$")
-    debug: bool = False
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
 
-    database_url: str
-    jwt_secret: str
-    jwt_algorithm: str = "HS256"
-    jwt_access_exp_minutes: int = 30
-    jwt_refresh_exp_minutes: int = 60 * 24 * 14  # 14 days
+    APP_NAME: str = "TrustCheck"
+    APP_VERSION: str = "1.0.0"
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = False
 
-    password_hash_scheme: str = "bcrypt"
-    rate_limit_requests_per_minute: int = 60
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    PHONE_HASH_SALT: str
+    BCRYPT_ROUNDS: int = 12
 
-    # Security toggles
-    enforce_tenant_isolation: bool = True
-    phone_hash_salt: str
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_DB_NAME: str = "trustcheck"
 
-    # CORS
-    cors_origins: Optional[str] = "*"
+    RATE_LIMIT_PER_MINUTE: int = 60
+    RATE_LIMIT_BURST: int = 10
 
-    class Config:
-        extra = "ignore"
+    ALLOWED_ORIGINS: str = "http://localhost:3000"
+
+    @property
+    def allowed_origins_list(self) -> List[str]:
+        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",")]
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def secret_key_must_be_long(cls, v: str) -> str:
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters")
+        return v
+
+    @field_validator("PHONE_HASH_SALT")
+    @classmethod
+    def salt_must_be_long(cls, v: str) -> str:
+        if len(v) < 16:
+            raise ValueError("PHONE_HASH_SALT must be at least 16 characters")
+        return v
 
 
+@lru_cache
 def get_settings() -> Settings:
-    try:
-        return Settings(
-            app_name=os.getenv("APP_NAME", "TrustCheck"),
-            environment=os.getenv("ENVIRONMENT", "production"),
-            debug=os.getenv("DEBUG", "false").lower() == "true",
-            database_url=os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/trust"),
-            jwt_secret=os.getenv("JWT_SECRET", "change-this-in-production"),
-            jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
-            jwt_access_exp_minutes=int(os.getenv("JWT_ACCESS_EXP_MINUTES", "30")),
-            jwt_refresh_exp_minutes=int(os.getenv("JWT_REFRESH_EXP_MINUTES", str(60 * 24 * 14))),
-            password_hash_scheme=os.getenv("PASSWORD_HASH_SCHEME", "bcrypt"),
-            rate_limit_requests_per_minute=int(os.getenv("RATE_LIMIT_RPM", "60")),
-            enforce_tenant_isolation=os.getenv("ENFORCE_TENANT_ISOLATION", "true").lower() == "true",
-            phone_hash_salt=os.getenv("PHONE_HASH_SALT", "replace-with-strong-salt"),
-            cors_origins=os.getenv("CORS_ORIGINS", "*"),
-        )
-    except ValidationError as e:
-        raise RuntimeError(f"Invalid configuration: {e}")
+    return Settings()

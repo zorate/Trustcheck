@@ -1,37 +1,67 @@
-import uvicorn
+import logging
+import sys
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import get_settings
-from app.middleware.audit import AuditMiddleware
-from app.api.v1.auth import router as auth_router
-from app.api.v1.business import router as business_router
-from app.api.v1.users import router as users_router
-from app.api.v1.persons import router as persons_router
-from app.api.v1.payments import router as payments_router
-from app.api.v1.scoring import router as scoring_router
-from app.api.v1.system import router as system_router
 
+from app.api.v1.router import router as v1_router
+from app.core.config import get_settings
+from app.core.database import close_db, connect_db
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.security import RequestIDMiddleware, SecurityHeadersMiddleware
+from app.utils.exceptions import register_exception_handlers
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    stream=sys.stdout,
+)
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
-app = FastAPI(title=settings.app_name, version="1.0.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[settings.cors_origins] if isinstance(settings.cors_origins, str) else settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("TrustCheck %s starting up [env=%s]", settings.APP_VERSION, settings.ENVIRONMENT)
+    await connect_db()
+    logger.info("Startup complete")
+    yield
+    logger.info("Shutting down TrustCheck")
+    await close_db()
 
-app.add_middleware(AuditMiddleware)
 
-app.include_router(auth_router)
-app.include_router(business_router)
-app.include_router(users_router)
-app.include_router(persons_router)
-app.include_router(payments_router)
-app.include_router(scoring_router)
-app.include_router(system_router)
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="TrustCheck",
+        description=(
+            "Behaviour-based payment trust scoring for SMEs, landlords, "
+            "cooperatives, and B2B vendors.\n\n"
+            "**This system is NOT a credit bureau.** "
+            "It uses only data entered by businesses and observed payment behaviour."
+        ),
+        version=settings.APP_VERSION,
+        lifespan=lifespan,
+        docs_url="/docs" if not settings.is_production else None,
+        redoc_url="/redoc" if not settings.is_production else None,
+        openapi_url="/openapi.json" if not settings.is_production else None,
+    )
 
-if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=False)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(RateLimitMiddleware, per_minute=settings.RATE_LIMIT_PER_MINUTE)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_origins_list,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    )
+
+    register_exception_handlers(app)
+    app.include_router(v1_router)
+
+    return app
+
+
+app = create_app()
