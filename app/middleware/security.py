@@ -18,9 +18,11 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         duration_ms = (time.perf_counter() - start) * 1000
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
-        logger.info("method=%s path=%s status=%s duration_ms=%.2f request_id=%s",
-                    request.method, request.url.path, response.status_code,
-                    duration_ms, request_id)
+        logger.info(
+            "method=%s path=%s status=%s duration_ms=%.2f request_id=%s",
+            request.method, request.url.path, response.status_code,
+            duration_ms, request_id,
+        )
         return response
 
 
@@ -34,5 +36,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Cache-Control"] = "no-store"
         response.headers["Pragma"] = "no-cache"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers.pop("server", None)
+
+        # Remove server identification header safely
+        if "server" in response.headers:
+            del response.headers["server"]
+
         return response
