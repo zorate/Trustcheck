@@ -27,9 +27,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         window_start = now - 60.0
         self._window[ip] = [t for t in self._window[ip] if t > window_start]
         if len(self._window[ip]) >= self.per_minute:
+            request_id = getattr(request.state, "request_id", None)
             return JSONResponse(
                 status_code=429,
-                content={"success": False, "error": "Rate limit exceeded. Try again in a moment."},
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": {
+                        "code": "RATE_LIMIT_EXCEEDED",
+                        "message": "Rate limit exceeded. Try again in a moment.",
+                        "details": {"retry_after_seconds": 60},
+                    },
+                    "meta": {"request_id": request_id} if request_id else {},
+                },
                 headers={"Retry-After": "60"},
             )
         self._window[ip].append(now)
