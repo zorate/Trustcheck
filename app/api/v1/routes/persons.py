@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import CurrentUser, get_client_ip, get_current_user, require_role
-from app.schemas.common import APIResponse, PaginatedResponse
+from app.schemas.common import APIResponse
 from app.schemas.person import AddPersonRequest, PersonOut, UpdatePersonRequest
 from app.services import person_service
 
@@ -20,10 +20,10 @@ async def add_person(
     person = await person_service.add_person(
         body, current_user.business_id, current_user.user_id, ip=ip
     )
-    return APIResponse(data=person, message="Person added")
+    return APIResponse(success=True, data=person)
 
 
-@router.get("", response_model=PaginatedResponse[PersonOut])
+@router.get("", response_model=APIResponse[list[PersonOut]])
 async def list_persons(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -32,12 +32,15 @@ async def list_persons(
     persons, total = await person_service.list_persons(
         current_user.business_id, page=page, page_size=page_size
     )
-    return PaginatedResponse(
+    return APIResponse(
+        success=True,
         data=persons,
-        total=total,
-        page=page,
-        page_size=page_size,
-        has_more=(page * page_size) < total,
+        meta={
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "has_more": (page * page_size) < total,
+        },
     )
 
 
@@ -47,7 +50,7 @@ async def lookup_by_phone(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     person = await person_service.get_person_by_phone(phone, current_user.business_id)
-    return APIResponse(data=person)
+    return APIResponse(success=True, data=person)
 
 
 @router.get("/{person_id}", response_model=APIResponse[PersonOut])
@@ -56,7 +59,7 @@ async def get_person(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     person = await person_service.get_person(person_id, current_user.business_id)
-    return APIResponse(data=person)
+    return APIResponse(success=True, data=person)
 
 
 @router.patch("/{person_id}", response_model=APIResponse[PersonOut])
@@ -70,7 +73,7 @@ async def update_person(
     person = await person_service.update_person(
         person_id, body, current_user.business_id, current_user.user_id, ip=ip
     )
-    return APIResponse(data=person)
+    return APIResponse(success=True, data=person)
 
 
 @router.delete("/{person_id}", response_model=APIResponse[None])
@@ -83,4 +86,4 @@ async def deactivate_person(
     await person_service.deactivate_person(
         person_id, current_user.business_id, current_user.user_id, ip=ip
     )
-    return APIResponse(message="Person deactivated")
+    return APIResponse(success=True, data=None)
