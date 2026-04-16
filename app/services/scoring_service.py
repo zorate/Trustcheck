@@ -167,6 +167,7 @@ async def get_score_summary(person_id: str, business_id: str) -> ScoreSummaryOut
     score = await _get_score_scoped(person_id, business_id)
     return ScoreSummaryOut(
         person_id=person_id,
+        total_score=score.total_score, #added this line 16/04/2026
         risk_band=score.risk_band,
         recommendation=score.recommendation,
         cold_start=score.cold_start,
