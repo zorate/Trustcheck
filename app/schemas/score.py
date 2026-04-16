@@ -29,6 +29,7 @@ class ScoreBreakdownOut(BaseModel):
 
 class ScoreSummaryOut(BaseModel):
     person_id: str
+    total_score: int #added this 16/04/2026
     risk_band: str
     recommendation: str
     cold_start: bool
