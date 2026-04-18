@@ -94,7 +94,6 @@ async def deactivate_person(
 
 @router.get(
     "/{person_id}/relationships",
-    response_model=APIResponse[list],
     summary="Get active relationships for a person",
 )
 async def get_relationships(
@@ -103,19 +102,21 @@ async def get_relationships(
 ):
     from app.models.relationship import Relationship
 
-    # Scoped to this business — IDOR protection
     rels = await Relationship.find(
         Relationship.business_id == current_user.business_id,
         Relationship.person_id == person_id,
         Relationship.deleted_at == None,  # noqa: E711
     ).to_list()
 
-    return APIResponse(data=[
-        {
-            "id": r.id,
-            "relationship_type": r.relationship_type,
-            "relationship_start": r.relationship_start.isoformat(),
-            "status": r.status,
-        }
-        for r in rels
-    ])
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": r.id,
+                "relationship_type": r.relationship_type,
+                "relationship_start": r.relationship_start.isoformat(),
+                "status": r.status,
+            }
+            for r in rels
+        ]
+    }
