@@ -95,13 +95,15 @@ async def deactivate_person(
 @router.get(
     "/{person_id}/relationships",
     response_model=APIResponse[list],
-    summary="Get relationships for a person",
+    summary="Get active relationships for a person",
 )
 async def get_relationships(
     person_id: str,
     current_user: CurrentUser = Depends(get_current_user),
 ):
     from app.models.relationship import Relationship
+
+    # Scoped to this business — IDOR protection
     rels = await Relationship.find(
         Relationship.business_id == current_user.business_id,
         Relationship.person_id == person_id,
