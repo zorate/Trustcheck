@@ -6,6 +6,8 @@ from app.api.deps import CurrentUser, get_client_ip, get_current_user, require_r
 from app.schemas.common import APIResponse
 from app.schemas.person import AddPersonRequest, PersonOut, UpdatePersonRequest
 from app.services import person_service
+from app.models.relationship import Relationship
+
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
 
@@ -87,3 +89,31 @@ async def deactivate_person(
         person_id, current_user.business_id, current_user.user_id, ip=ip
     )
     return APIResponse(success=True, data=None)
+
+
+
+@router.get(
+    "/{person_id}/relationships",
+    response_model=APIResponse[list],
+    summary="Get relationships for a person",
+)
+async def get_relationships(
+    person_id: str,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    from app.models.relationship import Relationship
+    rels = await Relationship.find(
+        Relationship.business_id == current_user.business_id,
+        Relationship.person_id == person_id,
+        Relationship.deleted_at == None,  # noqa: E711
+    ).to_list()
+
+    return APIResponse(data=[
+        {
+            "id": r.id,
+            "relationship_type": r.relationship_type,
+            "relationship_start": r.relationship_start.isoformat(),
+            "status": r.status,
+        }
+        for r in rels
+    ])
