@@ -47,3 +47,33 @@ async def revoke_reference(reference_id: str, request: Request,
     await scoring_service.revoke_reference(reference_id, current_user.business_id,
                                            current_user.user_id, ip=ip)
     return APIResponse(success=True, data=None)
+
+
+@router.get(
+    "/references/{person_id}",
+    summary="Get active references for a person",
+)
+async def get_references(
+    person_id: str,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    from app.models.reference import Reference
+    refs = await Reference.find(
+        Reference.business_id == current_user.business_id,
+        Reference.person_id == person_id,
+        Reference.is_active == True,
+        Reference.deleted_at == None,  # noqa: E711
+    ).to_list()
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": r.id,
+                "reference_type": r.reference_type,
+                "description": r.description,
+                "given_by": r.given_by,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in refs
+        ]
+    }
